@@ -48,7 +48,7 @@ communications.
 
 All communications attempt to support slow connections and Tor connections. Any
 connection with a throughput below 100kbps may struggle to perform the uploads
-and downloads, and any connection with a rountrip latency greater than 2
+and downloads, and any connection with a roundtrip latency greater than 2
 minutes may struggle to complete the protocols.
 
 Settings Request
@@ -113,18 +113,19 @@ ensure that the renter is only dealing with upstanding hosts.
 1. The renter makes an RPC to the host, opening a connection. The connection
    deadline should be at least 360 seconds.
 
-2. The host sends the renter the most recent copy of its settings, signed. If
-   the host is not accepting new file contracts, the connection is closed.
+2. The host signs and sends the renter the most recent copy of its external settings.
+   This is done both to verify the host's identity and to verify that the host
+   is accepting new file contracts, if not the connection is closed.
 
-3. The renter sends a notice of acceptance or rejection. If the renter accepts,
-   the renter then sends a funded file contract transaction without a
-   signature, followed by the public key that will be used to create the
+3. The renter either sends a notice of acceptance or rejection of the hosts external
+   settings. If the renter accepts, the renter sends a funded file contract transaction
+   without a signature, followed by the public key that will be used to create the
    renter's portion of the UnlockConditions for the file contract.
 
 4. The host sends an acceptance or rejection of the file contract. If the host
    accepts, the host will add collateral to the file contract, and will send
-   the renter the inputs + outputs for the collateral, followed by any new
-   parent transactions. The length of any of these may be zero.
+   the renter the inputs + outputs for the collateral, `followed by any new
+   parent transactions.` The length of any of these may be zero.
 
 5. The renter indicates acceptance or rejection of the file contract. If the
    renter accepts, the renter will sign the file contract and send the
@@ -154,7 +155,7 @@ File Contract Revision
 
 4. The host will verify the challenge signature, then send an acceptance or
    rejection. If accetped, the host will send the most recent file contract
-   revision for the file contract along with the transaction signagtures that
+   revision for the file contract along with the transaction signatures that
    validate the revision. The host will lock the file contract, meaning no
    other changes can be made to the revision file contract until this
    connection has closed.
@@ -212,7 +213,7 @@ File Contract Renewal
 
 4. The host will verify the challenge signature, then send an acceptance or
    rejection. If accetped, the host will send the most recent file contract
-   revision for the file contract along with the transaction signagtures that
+   revision for the file contract along with the transaction signatures that
    validate the revision. The host will lock the file contract, meaning no
    other changes can be made to the revision file contract until this
    connection has closed. The host sends the most recent revision of the host
