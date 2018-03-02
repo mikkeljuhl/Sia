@@ -17,8 +17,8 @@ const (
 )
 
 // FormContract forms a contract with a host and submits the contract
-// transaction to tpool. The contract is added to the ContractSet and its
-// metadata is returned.
+// transaction to the transaction pool. The contract is added to the
+// ContractSet and its metadata is returned.
 func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactionBuilder, tpool transactionPool, hdb hostDB, cancel <-chan struct{}) (modules.RenterContract, error) {
 	// Extract vars from params, for convenience.
 	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
@@ -78,9 +78,9 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 		},
 		MissedProofOutputs: []types.SiacoinOutput{
-			// Same as above.
+			// Same as above: Outputs need to account for tax.
 			{Value: types.PostTax(startHeight, totalPayout).Sub(hostPayout), UnlockHash: refundAddress},
-			// Same as above.
+			// Same as above: Collateral is returned to host.
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 			// Once we start doing revisions, we'll move some coins to the host and some to the void.
 			{Value: types.ZeroCurrency, UnlockHash: types.UnlockHash{}},
@@ -148,6 +148,9 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	if err = encoding.WriteObject(conn, ourSK.PublicKey()); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send our public key: " + err.Error())
 	}
+	if err = encoding.WriteObject(conn, parentTxns); err != nil {
+		return modules.RenterContract{}, errors.New("Couldn't send the parent transactions" + err.Error())
+	}
 
 	// Read acceptance and txn signed by host.
 	if err = modules.ReadNegotiationAcceptance(conn); err != nil {
@@ -155,12 +158,8 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 	// Host now sends any new parent transactions, inputs and outputs that
 	// were added to the transaction.
-	var newParents []types.Transaction
 	var newInputs []types.SiacoinInput
 	var newOutputs []types.SiacoinOutput
-	if err = encoding.ReadObject(conn, &newParents, types.BlockSizeLimit); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't read the host's added parents: " + err.Error())
-	}
 	if err = encoding.ReadObject(conn, &newInputs, types.BlockSizeLimit); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't read the host's added inputs: " + err.Error())
 	}
@@ -168,8 +167,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		return modules.RenterContract{}, errors.New("couldn't read the host's added outputs: " + err.Error())
 	}
 
-	// Merge txnAdditions with txnSet.
-	txnBuilder.AddParents(newParents)
+	// Merge txnAdditions with transactionSet.
 	for _, input := range newInputs {
 		txnBuilder.AddSiacoinInput(input)
 	}
